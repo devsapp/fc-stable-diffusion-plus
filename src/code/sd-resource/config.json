@@ -1,0 +1,10 @@
+{
+  "outdir_samples": "",
+  "outdir_txt2img_samples": "/outputs/txt2img",
+  "outdir_img2img_samples": "/outputs/img2img",
+  "outdir_extras_samples": "/outputs/extras",
+  "outdir_txt2img_grids": "/outputs/txt2img-grids",
+  "outdir_img2img_grids": "/outputs/img2img-grids",
+  "outdir_save": "/outputs/saved",
+  "font": "DejaVuSans.ttf"
+}

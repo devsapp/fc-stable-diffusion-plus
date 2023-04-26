@@ -1,0 +1,151 @@
+edition: 1.0.0 #  命令行YAML规范版本，遵循语义化版本（Semantic Versioning）规范
+name: fc-stable-diffusion-plus
+access: "simplemvc"
+
+vars:
+  region: '{{ region }}'
+  service:
+    name: "fc-stable-diffusion-plus"
+    description: 'stable-diffusion部署到函数计算，支持模型及插件自定义'
+    nasConfig: auto
+    internetAccess: true
+services:
+  fc-nas-init:
+    component: fc
+    props:
+      region: ${vars.region} # 关于变量的使用方法，可以参考：https://www.serverless-devs.com/serverless-devs/yaml#变量赋值
+      service: ${vars.service}
+      function:
+        name: "nas-init"
+        description: 'Prepare nas'
+        codeUri: './code/source-code/init'
+        runtime: python3.9
+        timeout: 1200
+        memorySize: 3072
+        cpu: 2.0
+        diskSize: 512
+        instanceConcurrency: 1
+        handler: index.handler
+
+  fc-nas-filemgr: # 业务名称/模块名称
+    component: fc # 组件名称，Serverless Devs 工具本身类似于一种游戏机，不具备具体的业务能力，组件类似于游戏卡，用户通过向游戏机中插入不同的游戏卡实现不同的功能，即通过使用不同的组件实现不同的具体业务能力
+    actions: # 自定义执行逻辑，关于actions 的使用，可以参考：https://www.serverless-devs.com/serverless-devs/yaml#行为描述
+      post-deploy: # 在deploy之前运行
+        - component: fc invoke --service-name ${fc-nas-init.output.service.name}
+            --function-name nas-init
+    props: # 组件的属性值
+      region: ${vars.region}
+      service: ${vars.service}
+      function:
+        name: "admin"
+        description: 'kodbox  Function'
+        codeUri: './code/source-code/kodbox'
+        runtime: custom
+        timeout: 7200
+        memorySize: 3072
+        cpu: 2.0
+        diskSize: 512
+        instanceConcurrency: 16
+        caPort: 80
+        customRuntimeConfig:
+          command:
+            - bash
+          args:
+            - '-c'
+            - '/code/start.sh'
+      triggers:
+        - name: httpTrigger
+          type: http
+          config:
+            authType: anonymous
+            methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - HEAD
+              - OPTIONS
+      customDomains:
+        - domainName: auto
+          protocol: HTTP
+          routeConfigs:
+            - path: /*
+
+  keep-warm: # 辅助函数, 2 min 定时预热
+    component: fc # 组件名称
+    actions:
+      post-deploy:
+        - component: fc invoke
+    props: # 组件的属性值
+      region: ${vars.region}
+      service: ${vars.service}
+      function:
+        name: keep-warm
+        description: 'Serverless Devs Web Framework Helper Function'
+        codeUri: './code/source-code/keep-warm'
+        handler: index.handler
+        runtime: python3
+        timeout: 120
+        memorySize: 128
+        cpu: 0.1
+        diskSize: 512
+        instanceConcurrency: 1
+        environmentVariables:
+          KODBOX_URL: ${fc-nas-filemgr.output.url.custom_domain[0].domain}
+      triggers:
+        - name: timerTrigger
+          type: timer
+          # qualifier: LATEST    
+          config:
+            payload: '{}'
+            cronExpression: '@every 2m'
+            enable: false
+  stable-diffusion-sd-server:
+    component: fc
+    actions: # 自定义执行逻辑，关于actions 的使用，可以参考：https://www.serverless-devs.com/serverless-devs/yaml#行为描述
+      post-deploy: # 在deploy之前运行
+        - run: s fc-nas-init nas upload -r ./code/sd-resource /mnt/auto/sd 
+          path: ./
+    props:
+      region: ${vars.region}
+      service: ${vars.service}
+      function:
+        handler: index.handler
+        timeout: 600
+        diskSize: 10240
+        caPort: 7860
+        instanceType: fc.gpu.tesla.1
+        runtime: custom-container
+        cpu: 8
+        customContainerConfig:
+          args: ''
+          accelerationType: Default
+          image: '{{ imageUrl }}'
+          accelerationInfo:
+            status: Preparing
+          command: ''
+          webServerMode: true
+        instanceConcurrency: 100
+        memorySize: 32768
+        environmentVariables: {}
+        gpuMemorySize: 16384
+        name: sd
+        asyncConfiguration: {}
+      triggers:
+        - name: defaultTrigger
+          description: ''
+          type: http
+          qualifier: LATEST
+          config:
+            methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+            authType: anonymous
+            disableURLInternet: false
+      customDomains:
+        - domainName: auto
+          protocol: HTTP
+          routeConfigs:
+            - path: /*
