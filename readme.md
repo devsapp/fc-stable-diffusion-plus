@@ -52,6 +52,7 @@
 您还需要注意：
 
 1. 本项目没有提供默认的sd模型，需要您根据文档提示自动上传
+2. 项目使用镜像地址 registry.cn-hangzhou.aliyuncs.com/serverlessdevshanxie/sd-auto-nas:v1 仅供参考
 </remark>
 
 <disclaimers>
