@@ -35,6 +35,7 @@ services:
           path: ./  
         - component: fc invoke --service-name ${fc-nas-init.output.service.name}
             --function-name nas-init
+        - component: fc ondemand put --qualifier LATEST --max 1
     props: # 组件的属性值
       region: ${vars.region}
       service: ${vars.service}
