@@ -9,3 +9,8 @@ def handler(event, context):
         os.system(
             "cd /mnt/auto/sd && unzip kodbox-1.35.031.zip && mv kodbox-1.35.031 .kodbox-1.35.031 && rm kodbox-1.35.031.zip && cd -")
     return "nas init"
+
+
+
+
+

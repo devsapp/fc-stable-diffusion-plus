@@ -26,10 +26,31 @@ services:
         diskSize: 512
         instanceConcurrency: 1
         handler: index.handler
-
+  fc-model-download:
+    component: fc
+    actions:
+      pre-deploy: 
+        - run: npm i 
+          path: ./code/source-code/download-model2nas
+    props:
+      region: ${vars.region} # 关于变量的使用方法，可以参考：https://www.serverless-devs.com/serverless-devs/yaml#变量赋值
+      service: ${vars.service}
+      function:
+        name: "model-download"
+        description: 'download model to nas'
+        codeUri: './code/source-code/download-model2nas'
+        runtime: nodejs16
+        timeout: 600
+        memorySize: 3072
+        cpu: 2.0
+        diskSize: 512
+        instanceConcurrency: 1
+        handler: index.handler
+        environmentVariables:
+          region: ${vars.region}
   fc-nas-filemgr: # 业务名称/模块名称
-    component: fc # 组件名称，Serverless Devs 工具本身类似于一种游戏机，不具备具体的业务能力，组件类似于游戏卡，用户通过向游戏机中插入不同的游戏卡实现不同的功能，即通过使用不同的组件实现不同的具体业务能力
-    actions: # 自定义执行逻辑，关于actions 的使用，可以参考：https://www.serverless-devs.com/serverless-devs/yaml#行为描述
+    component: fc 
+    actions: 
       post-deploy: # 在deploy之前运行
         - component: fc nas upload -r ./code/sd-resource /mnt/auto/sd
           path: ./  
@@ -78,7 +99,8 @@ services:
     component: fc # 组件名称
     actions:
       post-deploy:
-        - component: fc invoke
+        - component: fc invoke --service-name ${fc-model-download.output.service.name}
+            --function-name model-download
     props: # 组件的属性值
       region: ${vars.region}
       service: ${vars.service}
@@ -148,3 +170,50 @@ services:
           protocol: HTTP
           routeConfigs:
             - path: /*
+  {{if apiImageUrl}}
+  stable-diffusion-sd-api:
+    component: fc
+    props:
+      region: ${vars.region}
+      service: ${vars.service}
+      function:
+        handler: index.handler
+        timeout: 600
+        diskSize: 10240
+        caPort: 7860
+        instanceType: fc.gpu.tesla.1
+        runtime: custom-container
+        cpu: 8
+        customContainerConfig:
+          args: ''
+          accelerationType: Default
+          image: '{{ apiImageUrl }}'
+          accelerationInfo:
+            status: Preparing
+          command: ''
+          webServerMode: true
+        instanceConcurrency: 100
+        memorySize: 32768
+        environmentVariables: {}
+        gpuMemorySize: 16384
+        name: sd-api
+        asyncConfiguration: {}
+      triggers:
+        - name: defaultTrigger
+          description: ''
+          type: http
+          qualifier: LATEST
+          config:
+            methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+            authType: anonymous
+            disableURLInternet: false
+      customDomains:
+        - domainName: auto
+          protocol: HTTP
+          routeConfigs:
+            - path: /*  
+  {{/if}}
