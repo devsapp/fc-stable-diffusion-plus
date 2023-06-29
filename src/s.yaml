@@ -4,7 +4,7 @@ access: default
 vars:
   region: '{{ region }}'
   service:
-    name: "fc-stable-diffusion-plus"
+    name: '{{ serviceName }}'
     description: 'stable-diffusion部署到函数计算，支持模型及插件自定义'
     nasConfig: auto
     vpcConfig: auto
@@ -150,7 +150,7 @@ services:
         memorySize: 32768
         environmentVariables: {}
         gpuMemorySize: 16384
-        name: sd
+        name: '{{ functionName }}'
         asyncConfiguration: {}
       triggers:
         - name: defaultTrigger

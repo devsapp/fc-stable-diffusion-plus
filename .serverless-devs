@@ -1,0 +1,8 @@
+{
+  "marked-yamls": [
+    {
+      "path": "src/s.yaml",
+      "alias": "Default Environment"
+    }
+  ]
+}
